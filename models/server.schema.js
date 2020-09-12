@@ -1,10 +1,12 @@
 import mongoose from "mongoose";
+import {seq} from "../database.js";
 
 const serverSchema = new mongoose.Schema({
-    id: String,
     name: String,
-    members: Array,
+    members: [Number],
     channels: Array
-})
+});
+
+serverSchema.plugin(seq, {inc_field: "sid", start_seq: 5, inc_amount: 3});
 
 export default mongoose.model('Server', serverSchema);

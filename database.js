@@ -1,7 +1,14 @@
 import mongoose from "mongoose";
+import sequence from "mongoose-sequence";
 
-mongoose.connect('mongodb://localhost/disclone', {useNewUrlParser: true});
+mongoose.connect('mongodb://localhost/disclone', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  useCreateIndex: true,
+  useFindAndModify: false,
+});
 const db = mongoose.connection;
+const seq = sequence(db);
 
 db.on('error', console.error.bind(console, 'connection error:'));
 db.once('open', function() {
@@ -9,3 +16,4 @@ db.once('open', function() {
 });
 
 export default db;
+export {seq};

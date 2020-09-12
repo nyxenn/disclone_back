@@ -1,22 +1,26 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
+import {seq} from "../database.js";
 
 const userSchema = new mongoose.Schema({
-    id: String,
     username: String,
     password: String
 });
 
-userSchema.pre('save', function(next) {
-    const self = this;
+userSchema.plugin(seq, {inc_field: "uid", start_seq: 4, inc_amount: 3});
 
-    User.find({username: self.username}, function(err, docs) {
+userSchema.pre("save", function(next) {
+    const doc = this;
+
+    User.find({username: doc.username}, function(err, docs) {
         if (!docs.length) next();
         else {
-            console.log('User exists: ', self.username);
-            next(new Error("User exists"));
+            const s = "User exists: " + doc.username;
+            const e = new Error(s);
+            e.stack = false;
+            next(e);
         }
     });
 })
 
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model("User", userSchema);
 export default User;
