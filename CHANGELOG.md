@@ -1,5 +1,16 @@
 # Changelog
 
+## 21/09/2020
+### Added
+- Mongoose schemas 'Conversation', 'Request'
+- '/conv', '/req' routes
+- Added cors to project
+- Get conversations by user id
+- Get conversation history by conversation id
+- Get friend requests for user
+- Delete friend request for user
+- Get friends for user
+- Accept friend request for user
 
 ## 12/09/2020
 ### Added

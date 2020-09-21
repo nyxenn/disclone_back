@@ -25,7 +25,7 @@ function findServersByUser(userid, res) {
     Server.find({members: userid}).select("-_id").exec(function (err, servers) {
         if (err) {
             console.error(err);
-            return res.sendStatus(400);
+            return res.status(400).send(err);
         }
 
         console.log(`Getting servers for user #${userid}`);
@@ -35,14 +35,14 @@ function findServersByUser(userid, res) {
 
 router.get('/u/:userid', function(req, res) {
     const {userid} = req.params;
-    if (!userid) return res.sendStatus(400);
+    if (!userid) return res.status(400).send("No id");
 
     return findServersByUser(userid, res);
 });
 
 router.post('/new', function(req, res) {
     const {name, userid} = req.body;
-    if (!name || !userid) return res.sendStatus(400);
+    if (!name || !userid) return res.status(400).send("No data");
 
     const members = [userid];
     const defChannel = [{
@@ -53,9 +53,9 @@ router.post('/new', function(req, res) {
 
     const newServer = new Server({name, members, channels: defChannel });
     newServer.save(function(err, server) {
-        if (err) {
+        if (err || !server) {
             console.error(err);
-            return res.sendStatus(400);
+            return res.status(400).send(err);
         }
 
         return findServersByUser(userid, res);
@@ -64,20 +64,20 @@ router.post('/new', function(req, res) {
 
 router.post('/join', function(req, res) {
     const {serverid, userid} = req.body;
-    if (!serverid || !userid) return res.sendStatus(400);
+    if (!serverid || !userid) return res.status(400).send("No data");
 
     Server.findOne({sid: serverid}, function (err, server) {
-        if (err) {
+        if (err || !server) {
             console.log(err);
-            return res.sendStatus(400);
+            return res.status(400).send("Could not find");
         }
 
-        if (server.members.includes(userid)) return res.sendStatus(200);
+        if (server.members.includes(userid)) return res.status(400).send("Already joined");
         server.members.push(userid);
         server.save(function (err, svr) {
             if (err) {
                 console.log(err);
-                return res.sendStatus(400);
+                return res.status(400).send(err);
             }
             
             return findServersByUser(userid, res);

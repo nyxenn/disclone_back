@@ -7,6 +7,6 @@ const serverSchema = new mongoose.Schema({
     channels: Array
 });
 
-serverSchema.plugin(seq, {inc_field: "sid", start_seq: 5, inc_amount: 3});
+serverSchema.plugin(seq, {inc_field: "sid", start_seq: 100, inc_amount: 3});
 
 export default mongoose.model('Server', serverSchema);
