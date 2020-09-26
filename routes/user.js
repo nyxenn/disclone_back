@@ -99,55 +99,35 @@ router.post('/friends', function(req, res) {
     });
 });
 
-router.post('/add', async function(req, res) {
-    let {uid, fuid, rid} = req.body;
-    if (!uid || !fuid || !rid) return res.status(400).send("No data");
+async function checkIfFriends(uid, fuid) {
+    const uQuery = User.findOne({uid});
+    const uRes = await uQuery.exec();
+
+    if (!uRes) return {error: "No user"};
+    if (uRes.friends.indexOf(fuid) >= 0) return {error: "Already friends"};
+    return {error: false}
+}
+
+export async function addFriends(uid, fuid) {
+    if (!uid || !fuid) return { error: "No user ids" };
 
     uid = parseInt(uid);
     fuid = parseInt(fuid);
-    rid = parseInt(rid);
-    if (isNaN(uid) || isNaN(fuid) || isNaN(rid)) return res.status(400).send("Parse error"); 
+    if (isNaN(uid) || isNaN(fuid)) return { error: "No valid user ids" };
 
-    const reqQuery = Request.findOne({rid});
-    const reqResult = await reqQuery.exec();
+    const friendsCheck = await checkIfFriends(uid, fuid);
+    if (friendsCheck.error) return friendsCheck;
+
+    const rQuery = User.findOneAndUpdate({uid}, { $push: { friends: fuid} });
+    const sQuery = User.findOneAndUpdate({uid: fuid}, { $push: { friends: uid} });
+    const rRes = await rQuery.exec();
+    const sRes = await sQuery.exec();
+
+    if (!rRes.friends.includes(fuid)) rRes.friends.push(fuid);
+    if (!sRes.friends.includes(uid)) sRes.friends.push(uid);
     
-    if (!reqResult) {
-        console.log("No request found");
-        return res.status(400).send("No request");
-    }
-
-    if (reqResult.receiver !== uid || reqResult.sender !== fuid) {
-        console.log("Request data does not match");
-        return res.status(400).send("Data error");
-    }
-
-    const userQuery = User.find({uid: {$in: [uid, fuid]}});
-    const userResults = await userQuery.exec();
-
-    
-
-    User.find({uid: {$in: [uid, fuid]}}, (err, users) => {
-        if (!users || users.length !== 2) {
-            console.log("Friend request user count error");
-            return res.status(400).send("Count error");
-        }
-
-        for (let u of users) {
-            let added = [uid, fuid].some(friend => u.friends.includes(friend));
-    
-            if (added) {
-                console.log("Users already friends");
-                break;
-            }
-    
-            (u.uid === uid) ? u.friends.push(fuid) : u.friends.push(uid);
-            u.save(function(saveErr) { if(saveErr) console.log("Save error ", saveErr) });
-        }
-
-    });
-    
-    deleteRequest(res, rid, uid);
-});
+    return { error: false, receiver: {uid: sRes.uid, username: sRes.username}, sender: {uid: rRes.uid, username: rRes.username} };
+}
 
 
 

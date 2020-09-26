@@ -12,7 +12,6 @@ userSchema.plugin(seq, {inc_field: "uid", start_seq: 100, inc_amount: 3});
 
 userSchema.pre("save", function(next) {
     const doc = this;
-    console.log(doc);
 
     if (doc._id) next();
 

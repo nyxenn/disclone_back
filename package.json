@@ -17,6 +17,7 @@
     "mongoose-sequence": "^5.2.2",
     "nodemon": "^2.0.4",
     "requirejs": "^2.3.6",
+    "socket.io": "^2.3.0",
     "uuid": "^8.3.0"
   }
 }

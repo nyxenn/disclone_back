@@ -1,5 +1,6 @@
 import express from "express";
 import Request from '../models/request.schema.js';
+import User from '../models/user.schema.js';
 
 const router = express.Router();
 
@@ -22,7 +23,7 @@ router.use(function (req, res, next) {
 });
 
 export function getRequestByUser(res, uid) {
-    Request.find({ $or: [{'receiver': uid}, {'sender': uid}] }).select('-_id -__v').populate("receiverName senderName", "username -_id").exec(function(err, reqs) {
+    Request.find({ $or: [{'receiver': uid}, {'sender': uid}] }).select('-_id -__v').populate("receiverName senderName", "username uid -_id").exec(function(err, reqs) {
         if (err) return res.status(400).send(err);
 
         uid = parseInt(uid);
@@ -44,17 +45,6 @@ export function getRequestByUser(res, uid) {
     });
 }
 
-export function deleteRequest(res, rid, uid) {
-    Request.deleteOne({rid}, (err) => {
-        if (err) {
-            console.log(err);
-            return res.status(400).send(err);
-        }
-
-        getRequestByUser(res, uid);
-    });
-}
-
 router.get('/all/:uid', function(req, res) {
     if (!req.params.uid) return res.status(400).send("No id");
     const uid = parseInt(req.params.uid);
@@ -70,6 +60,80 @@ router.delete('/r/:rid&:uid', function(req, res) {
 
     if (isNaN(rid) || isNaN(uid)) return res.status(400).send("Invalid id");
     deleteRequest(res, rid, uid);
-}) 
+});
+
+export async function deleteRequest(rid) {
+    if (!rid) return {error: "No id"};
+
+    rid = parseInt(rid);
+    if(isNaN(rid)) return {error: "Parsing error"};
+
+    const delQuery = Request.findOneAndDelete({rid});
+    const delRes = await delQuery.exec();
+
+    return {error: false};
+}
+
+async function checkIfFriends(uid, friendname) {
+    let error = null;
+    let fuid = null;
+
+    const userQuery = User.findOne({username: friendname}, function (err, doc) {
+        if (err) {
+            console.log("Error");
+            error = err
+            return;
+        }
+
+        if (!doc) {
+            error = "No user found";
+            return;
+        }
+
+        if (doc.friends.find(id => id === uid)) {
+            error = "Already friends";
+            return;
+        }
+
+        fuid = doc.uid;
+    });
+    const userRes = await userQuery.exec();
+
+    return {error, fuid};
+}
+
+async function checkIfRequestExists(uid, fuid) {
+    const reqQuery = Request.findOne({$or: [{sender: uid, receiver: fuid}, {sender: fuid, receiver: uid}]});
+    const reqResult = await reqQuery.exec();
+    if (!reqResult) return { error: false };
+    return { error: "Request already exists" };
+}
+
+export async function sendRequest(uid, username, friendname) {
+    const friendsCheck = await checkIfFriends(uid, friendname);
+    if (friendsCheck.error || !friendsCheck.fuid) return friendsCheck;
+
+    const requestCheck = await checkIfRequestExists(uid, friendsCheck.fuid);
+    if (requestCheck.error) return requestCheck;
+
+    const req = new Request({sender: uid, receiver: friendsCheck.fuid, timestamp: Date.now() / 1000 });
+    await req.save();
+
+    const senderReq = {
+        rid: req.rid,
+        type: "outgoing",
+        user: {uid: friendsCheck.fuid, username: friendname},
+        timestamp: req.timestamp
+    };
+
+    const receiverReq = {
+        rid: req.rid,
+        type: "incoming",
+        user: {uid, username},
+        timestamp: req.timestamp
+    };
+
+    return {error: false, sender: senderReq, receiver: receiverReq};
+}
 
 export default router;

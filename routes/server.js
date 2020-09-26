@@ -83,6 +83,54 @@ router.post('/join', function(req, res) {
             return findServersByUser(userid, res);
         });
     });
-})
+});
+
+export async function sendChannelMessage(msg, sid, cid) {
+    if (!msg || !sid || !cid) {
+        console.log("No body");
+        return false;
+    }
+
+    if (!msg.user || !msg.message) {
+        console.log("No message");
+        return false;
+    }
+
+    const message = {
+        mid: null,
+        user: msg.user,
+        message: msg.message,
+        timestamp: msg.timestamp
+    }
+
+    const srvQuery = Server.findOne({sid}, async (err, srv) => {
+        if (err || !srv) {
+            console.log("Srv err: ", err);
+            return false;
+        }
+
+        const channel = srv.channels.find(c => c.cid === cid);
+        if (!channel) {
+            console.log("No matching channel");
+            return false;
+        }
+
+        const channelIndex = srv.channels.indexOf(channel);
+        console.log(channelIndex);
+        const historyLength = channel.history.length;
+        message.mid = historyLength ? channel.history[historyLength - 1].mid + 1 : 1;
+        channel.history.push(message);
+        channel.history.sort(function(x, y) {
+            return x.timestamp - y.timestamp
+        });
+
+        srv.channels[channelIndex] = channel;
+        srv.markModified("channels"); // Needed for mongoose to properly save the nested object
+        srv.save( function (saveErr) { if (saveErr) console.log("Save error ", saveErr) });
+    });
+    const srvResult = await srvQuery.exec();
+
+    return message;
+}
 
 export default router;
