@@ -1,5 +1,22 @@
 # Changelog
 
+## 08/10/2020
+### Added
+- Channel schema as subdocument of Server
+- Channel adding and deleting
+- Server deleting
+- Friend deleting
+### Updated
+- Changed various routes to work with document's _id field instead of a auto-incremented field
+### Deleted
+- Removed mongoose-sequence from project
+
+## 26/09/2020
+### Added
+- Added channel messaging, direct messaging with socket.io
+### Updated
+- Made friend requests work with socket.io
+
 ## 21/09/2020
 ### Added
 - Mongoose schemas 'Conversation', 'Request'

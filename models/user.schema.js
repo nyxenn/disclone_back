@@ -1,14 +1,10 @@
 import mongoose from "mongoose";
-import {seq} from "../database.js";
 
 const userSchema = new mongoose.Schema({
-    uid: {type: Number, index: true, unique: true},
     username: String,
     password: String,
-    friends: {type: [Number], default: []}
+    friends: [{type: mongoose.Schema.Types.ObjectId, ref: "User"}]
 });
-
-userSchema.plugin(seq, {inc_field: "uid", start_seq: 100, inc_amount: 3});
 
 userSchema.pre("save", function(next) {
     const doc = this;

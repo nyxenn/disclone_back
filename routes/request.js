@@ -1,40 +1,23 @@
 import express from "express";
 import Request from '../models/request.schema.js';
 import User from '../models/user.schema.js';
+import mongoose from 'mongoose';
 
 const router = express.Router();
 
-function getTimeWithLeadingZeros() {
-    const d = new Date();
-    const hours = (d.getHours() > 10 ? '' : '0') + d.getHours();
-    const minutes = (d.getMinutes() > 10 ? '' : '0') + d.getMinutes();
-    const seconds = (d.getSeconds() > 10 ? '' : '0') + d.getSeconds();
-    return `${hours}:${minutes}:${seconds}`;
-}
-
-router.use(function (req, res, next) {
-    const date = getTimeWithLeadingZeros();
-    const host = req.headers.host;
-    const method = req.method;
-    const url = req.originalUrl;
-    const request = `${host} ${method} ${url}`;
-    console.log(`[${date}]: ${request}`);
-    next();
-});
-
 export function getRequestByUser(res, uid) {
-    Request.find({ $or: [{'receiver': uid}, {'sender': uid}] }).select('-_id -__v').populate("receiverName senderName", "username uid -_id").exec(function(err, reqs) {
+    console.log("Requests for:", uid);
+    Request.find({ $or: [{'receiver': uid}, {'sender': uid}] }).populate("receiver sender", "username").exec(function(err, reqs) {
         if (err) return res.status(400).send(err);
 
-        uid = parseInt(uid);
-        if (isNaN(uid)) return res.status(400).send("Invalid id");
-
+        const oid = mongoose.Types.ObjectId(uid);
+        
         if (reqs) {
             reqs = reqs.map(r => {
                 return {
-                    "rid": r.rid,
-                    "type": r.receiver === uid ? "incoming" : "outgoing",
-                    "user": r.receiver === uid ? r.senderName : r.receiverName,
+                    "_id": r._id,
+                    "type": r.receiver._id.equals(oid) ? "incoming" : "outgoing",
+                    "user": r.receiver._id.equals(oid) ? r.sender : r.receiver,
                     "timestamp": r.timestamp
                 }
             });
@@ -47,28 +30,14 @@ export function getRequestByUser(res, uid) {
 
 router.get('/all/:uid', function(req, res) {
     if (!req.params.uid) return res.status(400).send("No id");
-    const uid = parseInt(req.params.uid);
-
-    if (isNaN(uid)) return res.status(400).send("Invalid id");
+    const uid = req.params.uid;
     getRequestByUser(res, uid);
-});
-
-router.delete('/r/:rid&:uid', function(req, res) {
-    if (!req.params.rid || !req.params.uid) return res.status(400).send("No id");
-    const rid = parseInt(req.params.rid);
-    const uid = parseInt(req.params.uid);
-
-    if (isNaN(rid) || isNaN(uid)) return res.status(400).send("Invalid id");
-    deleteRequest(res, rid, uid);
 });
 
 export async function deleteRequest(rid) {
     if (!rid) return {error: "No id"};
 
-    rid = parseInt(rid);
-    if(isNaN(rid)) return {error: "Parsing error"};
-
-    const delQuery = Request.findOneAndDelete({rid});
+    const delQuery = Request.findOneAndDelete({_id: rid});
     const delRes = await delQuery.exec();
 
     return {error: false};
@@ -95,7 +64,7 @@ async function checkIfFriends(uid, friendname) {
             return;
         }
 
-        fuid = doc.uid;
+        fuid = doc._id;
     });
     const userRes = await userQuery.exec();
 
@@ -120,16 +89,16 @@ export async function sendRequest(uid, username, friendname) {
     await req.save();
 
     const senderReq = {
-        rid: req.rid,
+        _id: req._id,
         type: "outgoing",
-        user: {uid: friendsCheck.fuid, username: friendname},
+        user: {_id: friendsCheck.fuid, username: friendname},
         timestamp: req.timestamp
     };
 
     const receiverReq = {
-        rid: req.rid,
+        _id: req._id,
         type: "incoming",
-        user: {uid, username},
+        user: {_id: uid, username},
         timestamp: req.timestamp
     };
 

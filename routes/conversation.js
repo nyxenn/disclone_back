@@ -1,42 +1,19 @@
 import express from "express";
 import Conversation from '../models/conversation.schema.js';
-import app from "../app.js";
 
 const router = express.Router();
 
-
-function getTimeWithLeadingZeros() {
-    const d = new Date();
-    const hours = (d.getHours() > 10 ? '' : '0') + d.getHours();
-    const minutes = (d.getMinutes() > 10 ? '' : '0') + d.getMinutes();
-    const seconds = (d.getSeconds() > 10 ? '' : '0') + d.getSeconds();
-    return `${hours}:${minutes}:${seconds}`;
-}
-
-router.use(function (req, res, next) {
-    const date = getTimeWithLeadingZeros();
-    const host = req.headers.host;
-    const method = req.method;
-    const url = req.originalUrl;
-    const request = `${host} ${method} ${url}`;
-    console.log(`[${date}]: ${request}`);
-    next();
-});
-
 router.get('/simple/:uid', function(req, res) {
     if (!req.params.uid) return res.status(400).send("No id");
-    const uid = parseInt(req.params.uid);
+    const uid = req.params.uid;
 
-    Conversation.find({members: uid}).select('-_id -__v -history').populate('memberdetails', 'uid username -_id').exec(function(err, convs) {
+    Conversation.find({members: uid}).select('-history').populate('members', 'username').exec(function(err, convs) {
         if (err) {
             console.log(err);
             return res.status(400).send(err);
         }
         
-        convs = convs.map(c => {
-            c.members = undefined;
-            return c;
-        })
+        
         return res.status(200).json(convs);
     });
 });
@@ -49,7 +26,7 @@ router.get('/history/:dmid', function(req, res) {
 
     const dmid = req.params.dmid;
 
-    Conversation.findOne({dmid}, "history -_id", function(err, history) {
+    Conversation.findOne({_id: dmid}, "history", function(err, history) {
         if(err) {
             console.log(err);
             return res.status(400).send(err);
@@ -57,6 +34,46 @@ router.get('/history/:dmid', function(req, res) {
 
         return res.status(200).json(history);
     });
+});
+
+async function getDM(uid, fuid) {
+    const convQuery = Conversation.findOne({group: false, $or: [{'members': [uid, fuid]}, {'members': [fuid, uid]}]}).populate('members', 'username');
+    return convQuery.exec();
+}
+
+async function createDM(uid, fuid) {
+    let newConv = new Conversation({members: [uid, fuid]});
+    newConv = await newConv.save();
+    await Conversation.populate(newConv, {path: "members", select: "username"});
+    return newConv;
+}
+
+router.post('/open', async function(req, res) {
+    if (!req.body.uid || !req.body.fuid) {
+        console.log("No user ids");
+        return res.status(400).send("No ids");
+    }
+
+    const {uid, fuid} = req.body;
+
+    let conv = await getDM(uid, fuid);
+
+    if (!conv) {
+        console.log("No conversation found, creating");
+        conv = await createDM(uid, fuid);
+        for (let u of conv.members) {
+            req.io.in(u.username).emit("new-dm", {dmid: conv.dmid, members: conv.members, "date-created": conv["date-created"]});
+        }
+    }
+
+    const returnConv = {
+        dmid: conv.dmid,
+        history: conv.history,
+        members: conv.members,
+        "date-created": conv["date-created"]
+    }
+
+    return res.status(200).json(returnConv);
 });
 
 export async function sendMessage(msg, dmid) {
@@ -77,7 +94,7 @@ export async function sendMessage(msg, dmid) {
         timestamp: msg.timestamp
     }
 
-    const convQuery = Conversation.findOne({dmid}, (err, conv) => {
+    const convQuery = Conversation.findOne({_id: dmid}, (err, conv) => {
         if (err || !conv) {
             console.log(err);
             return false;
@@ -98,45 +115,5 @@ export async function sendMessage(msg, dmid) {
 
     return message;
 }
-
-router.post('/msg', function(req, res) {
-    setTimeout(() => {
-        if (!req.body.msg || !req.body.socket) {
-            console.log("No body");
-            return res.status(400).send("No body");
-        }
-        const {msg, socket} = req.body;
-    
-        if (!msg.dmid || !msg.message || !msg.user) {
-            console.log("No message");
-            return res.status(400).send("No message");
-        }
-        const message = {
-            mid: null,
-            user: msg.user,
-            message: msg.message,
-            timestamp: msg.timestamp
-        }
-    
-        Conversation.findOne({dmid: msg.dmid}, function(err, conv) {
-            if (err || !conv) {
-                console.log(err);
-                return res.status(400).send(err);
-            }
-            const historyLength = conv.history.length;
-            message.mid = historyLength ? conv.history[historyLength - 1].mid + 1 : 1;
-            conv.history.push(message);
-    
-            conv.history.sort(function(x, y) {
-                return x.timestamp - y.timestamp
-            });
-    
-            conv.save(function(saveErr) { if(saveErr) console.log("Save error ", saveErr) });
-            socket.broadcast.emit('newMessage', message);
-            return res.status(200);
-        });
-    }, 1000);
-    
-});
 
 export default router;

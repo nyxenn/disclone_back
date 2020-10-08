@@ -14,10 +14,10 @@
     "cors": "^2.8.5",
     "express": "^4.17.1",
     "mongoose": "^5.10.4",
-    "mongoose-sequence": "^5.2.2",
     "nodemon": "^2.0.4",
     "requirejs": "^2.3.6",
     "socket.io": "^2.3.0",
+    "unique-string-generator": "^1.0.2",
     "uuid": "^8.3.0"
   }
 }

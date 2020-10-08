@@ -1,12 +1,12 @@
 import mongoose from "mongoose";
-import {seq} from "../database.js";
+import {channelSchema} from "./channel.schema.js";
 
 const serverSchema = new mongoose.Schema({
     name: String,
-    members: [Number],
-    channels: Array
+    members: [{type: mongoose.Schema.Types.ObjectId, ref: "User"}],
+    channels: [channelSchema],
+    invite: String,
+    creator: {type: mongoose.Schema.Types.ObjectId, ref: "User"}
 });
-
-serverSchema.plugin(seq, {inc_field: "sid", start_seq: 100, inc_amount: 3});
 
 export default mongoose.model('Server', serverSchema);

@@ -1,23 +1,10 @@
 import mongoose from "mongoose";
-import {seq} from "../database.js";
 
 const conversationSchema = new mongoose.Schema({
-    members: [Number],
-    history: Array,
-    "date-created": Number
-},
-{
-    id: false,
-    toObject: {vrituals: true},
-    toJSON: {virtuals: true}
+    members: [{type: mongoose.Schema.Types.ObjectId, ref: "User"}],
+    history: {type: Array, default: []},
+    "date-created": {type: Number, default: Date.now() / 1000},
+    group: {type: Boolean, default: false}
 });
-
-conversationSchema.virtual('memberdetails', {
-    ref: 'User',
-    localField: 'members',
-    foreignField: 'uid',
-});
-
-conversationSchema.plugin(seq, {inc_field: "dmid", start_seq: 100, inc_amount: 3});
 
 export default mongoose.model('Conversation', conversationSchema);
