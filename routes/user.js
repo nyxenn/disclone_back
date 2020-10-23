@@ -21,9 +21,12 @@ router.get('/u/:uid', function(req, res) {
 
 router.post('/register', function(req, res) {
     if (!req.body.username || !req.body.password) return res.status(400).send("No data");
-    const username = req.body.username.toLowerCase();
+    if (req.body.username.length > 20 || req.body.username.length < 2) return res.status(400).send("Name too short/long");
+    console.log("still registering lol");
+    const username = req.body.username;
+    const username_lower = req.body.username.toLowerCase();
     const password = bcrypt.hashSync(req.body.password, saltRounds);
-    const user = new User({username, password, friends: []});
+    const user = new User({username, username_lower, password, friends: []});
 
     user.save(function (err, user) {
         if (err) {
@@ -40,7 +43,7 @@ router.post('/login', function(req, res) {
     if (!req.body.username || !req.body.password) return res.status(400).send("No data");
     const {username, password} = req.body;
 
-    User.findOne({username: username.toLowerCase()}, '-__v', function(err, user) {
+    User.findOne({username_lower: username.toLowerCase()}, '-__v', function(err, user) {
         if (err) return res.status(400).send(err);
         if (!user) return res.status(400).send("No user");
         if (!bcrypt.compareSync(password, user.password)) return res.status(400).send("Invalid password");

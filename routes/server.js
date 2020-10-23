@@ -27,6 +27,7 @@ router.get('/u/:uid', function(req, res) {
 router.post('/new', function(req, res) {
     const {name, uid} = req.body;
     if (!name || !uid) return res.status(400).send("No data");
+    if (name.length > 60 || name.length < 2) return res.status(400).send("Name too short/long");
 
     const members = [uid];
     const gen =  new Channel({name: "general"});
@@ -48,6 +49,11 @@ router.post("/channel/new", function(req, res) {
     if (!name) {
         console.log("No channel/server");
         return res.status(400).send("No channel/server");
+    }
+
+    if (name.length > 25 || name.length < 2) {
+        console.log("Name too short/long");
+        return res.status(400).send("Name length error");
     }
 
     Server.findOne({_id: sid}, (err, srv) => {
@@ -91,7 +97,7 @@ router.post('/join', function(req, res) {
                 return res.status(400).send(err2);
             }
             
-            req.io.in(server._id).emit("srv-joined", uid, username);
+            req.io.in(server._id).emit("srv-joined", server._id, uid, username);
             return findServersByUser(uid, res);
         });
     });
@@ -161,7 +167,8 @@ export async function sendChannelMessage(msg, sid, cid) {
             return false;
         }
 
-        const channel = srv.channels.find(c => c.cid === cid);
+        const channel = srv.channels.find(c => c._id.equals(cid));
+
         if (!channel) {
             console.log("No matching channel");
             return false;

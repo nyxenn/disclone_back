@@ -45,9 +45,10 @@ export async function deleteRequest(rid) {
 
 async function checkIfFriends(uid, friendname) {
     let error = null;
-    let fuid = null;
+    let _id = null;
+    let username = null;
 
-    const userQuery = User.findOne({username: friendname}, function (err, doc) {
+    const userQuery = User.findOne({username_lower: friendname.toLowerCase()}, function (err, doc) {
         if (err) {
             console.log("Error");
             error = err
@@ -64,11 +65,12 @@ async function checkIfFriends(uid, friendname) {
             return;
         }
 
-        fuid = doc._id;
+        _id = doc._id;
+        username = doc.username;
     });
     const userRes = await userQuery.exec();
 
-    return {error, fuid};
+    return {error, _id, username};
 }
 
 async function checkIfRequestExists(uid, fuid) {
@@ -80,18 +82,18 @@ async function checkIfRequestExists(uid, fuid) {
 
 export async function sendRequest(uid, username, friendname) {
     const friendsCheck = await checkIfFriends(uid, friendname);
-    if (friendsCheck.error || !friendsCheck.fuid) return friendsCheck;
+    if (friendsCheck.error || !friendsCheck._id) return friendsCheck;
 
-    const requestCheck = await checkIfRequestExists(uid, friendsCheck.fuid);
+    const requestCheck = await checkIfRequestExists(uid, friendsCheck._id);
     if (requestCheck.error) return requestCheck;
 
-    const req = new Request({sender: uid, receiver: friendsCheck.fuid, timestamp: Date.now() / 1000 });
+    const req = new Request({sender: uid, receiver: friendsCheck._id, timestamp: Date.now() / 1000 });
     await req.save();
 
     const senderReq = {
         _id: req._id,
         type: "outgoing",
-        user: {_id: friendsCheck.fuid, username: friendname},
+        user: {_id: friendsCheck._id, username: friendsCheck.username},
         timestamp: req.timestamp
     };
 

@@ -11,7 +11,7 @@ import conversationRoute, {sendMessage} from './routes/conversation.js';
 import requestRoute, {sendRequest, deleteRequest} from './routes/request.js';
 
 const app = express();
-const port = 3000;
+const port = 8990;
 
 function getDateString() {
   const d = new Date();
@@ -67,7 +67,7 @@ io.on('connection', function(socket) {
 
   socket.on('join', function(username) {
     console.log(`[${getDateString()}]: ${host} /socket.io/join`);
-    socket.join(username);
+    socket.join(username.toLowerCase());
   });
 
   socket.on('room', function(room) {
@@ -103,8 +103,8 @@ io.on('connection', function(socket) {
       return;
     }
 
-    io.in(friendname).emit("new-req", res.receiver);
-    io.in(username).emit("new-req", res.sender);
+    io.in(friendname.toLowerCase()).emit("new-req", res.receiver);
+    io.in(username.toLowerCase()).emit("new-req", res.sender);
   });
 
   socket.on('deleteRequest', async function(rid, friendname) {
@@ -116,7 +116,7 @@ io.on('connection', function(socket) {
       return;
     }
     
-    io.in(friendname).emit("del-req", rid);
+    io.in(friendname.toLowerCase()).emit("del-req", rid);
     socket.emit("del-req", rid);
   });
 
@@ -136,10 +136,8 @@ io.on('connection', function(socket) {
       return;
     }
 
-    console.log(addRes);
-
     // Return rid, friend object to update users' friend and request lists in the browser
-    io.in(friendname).emit("acc-req", rid, addRes.sender);
+    io.in(friendname.toLowerCase()).emit("acc-req", rid, addRes.sender);
     socket.emit("acc-req", rid, addRes.receiver);
   });
 
@@ -152,8 +150,8 @@ io.on('connection', function(socket) {
     const deleteResult = await deleteFriend(user.uid, friend.uid);
     if (deleteResult.error) return console.log(deleteResult.error);
 
-    io.in(user.username).emit("del-friend", friend.uid);
-    io.in(friend.username).emit("del-friend", user.uid);
+    io.in(user.username.toLowerCase()).emit("del-friend", friend.uid);
+    io.in(friend.username.toLowerCase()).emit("del-friend", user.uid);
   });
 });
 

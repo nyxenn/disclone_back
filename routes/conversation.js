@@ -62,12 +62,12 @@ router.post('/open', async function(req, res) {
         console.log("No conversation found, creating");
         conv = await createDM(uid, fuid);
         for (let u of conv.members) {
-            req.io.in(u.username).emit("new-dm", {dmid: conv.dmid, members: conv.members, "date-created": conv["date-created"]});
+            req.io.in(u.username).emit("new-dm", {_id: conv._id, members: conv.members, "date-created": conv["date-created"]});
         }
     }
 
     const returnConv = {
-        dmid: conv.dmid,
+        dmid: conv._id,
         history: conv.history,
         members: conv.members,
         "date-created": conv["date-created"]
