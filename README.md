@@ -21,7 +21,7 @@
     The backend api for <a href="https://github.com/nyxenn/disclone_front">Disclone</a>.
     <br />
     <br />
-    <a href="http://disclone.redirectme.net:7666">View Demo</a>
+    <a href="http://nyxenn.ddns.net:5011/">View Demo</a>
   </p>
 </p>
 
